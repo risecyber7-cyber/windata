@@ -49,15 +49,6 @@ jobs:
         echo ===== RDP PORT STATUS =====
         netstat -ano | findstr 3389
 
-    - name: Show CPU + RAM (Modern Method)
-      run: |
-        echo ===== CPU INFO =====
-        Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores
-
-        echo ===== MEMORY INFO =====
-        $os = Get-CimInstance Win32_OperatingSystem
-        "Total Memory (MB): $([math]::round($os.TotalVisibleMemorySize/1024))"
-        "Free Memory (MB): $([math]::round($os.FreePhysicalMemory/1024))"
 
     - name: Show Disk Info
       run: |
