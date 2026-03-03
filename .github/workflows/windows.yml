@@ -1,0 +1,46 @@
+name: Windows 2025 Runner with Tailscale
+
+on:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 360   # Max allowed by GitHub (6 hours)
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Install Tailscale
+      shell: powershell
+      run: |
+        choco install tailscale -y
+
+    - name: Start Tailscale
+      shell: powershell
+      run: |
+        tailscale up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --hostname=rise-windows
+
+    - name: Create User
+      shell: powershell
+      run: |
+        net user rise deva /add
+        net localgroup administrators rise /add
+
+    - name: Enable RDP
+      shell: powershell
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+    - name: Show Tailscale IP
+      shell: powershell
+      run: |
+        tailscale ip -4
+
+    - name: Keep Session Active
+      shell: powershell
+      run: |
+        Write-Host "Runner will stay active until timeout (6 hours max)."
+        Start-Sleep -Seconds 21600
