@@ -6,41 +6,26 @@ on:
 jobs:
   windows:
     runs-on: windows-latest
-    timeout-minutes: 360   # Max allowed by GitHub (6 hours)
+    timeout-minutes: 360
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Install Tailscale
-      shell: powershell
-      run: |
-        choco install tailscale -y
-
-    - name: Start Tailscale
-      shell: powershell
-      run: |
-        tailscale up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --hostname=rise-windows
+    - name: Setup Tailscale
+      uses: tailscale/github-action@v2
+      with:
+        authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+        hostname: rise-windows
 
     - name: Create User
-      shell: powershell
       run: |
         net user rise deva /add
         net localgroup administrators rise /add
 
     - name: Enable RDP
-      shell: powershell
       run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+        netsh advfirewall firewall set rule group="remote desktop" new enable=Yes
 
-    - name: Show Tailscale IP
-      shell: powershell
-      run: |
-        tailscale ip -4
-
-    - name: Keep Session Active
-      shell: powershell
-      run: |
-        Write-Host "Runner will stay active until timeout (6 hours max)."
-        Start-Sleep -Seconds 21600
+    - name: Keep Alive (6 hours max)
+      run: timeout /t 21600
