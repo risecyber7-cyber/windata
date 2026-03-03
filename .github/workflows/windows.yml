@@ -1,31 +1,61 @@
-name: Windows 2025 Runner with Tailscale
+name: Ultimate Windows CloudLab
 
 on:
   workflow_dispatch:
 
 jobs:
-  windows:
+  winlab:
     runs-on: windows-latest
     timeout-minutes: 360
 
     steps:
-    - uses: actions/checkout@v4
 
-    - name: Setup Tailscale
-      uses: tailscale/github-action@v2
-      with:
-        authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
-        hostname: rise-windows
-
-    - name: Create User
+    - name: Show Basic Info
       run: |
-        net user rise deva /add
-        net localgroup administrators rise /add
+        echo ===== SYSTEM INFO =====
+        systeminfo
+        echo ===== IP CONFIG =====
+        ipconfig
 
     - name: Enable RDP
       run: |
         reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
         netsh advfirewall firewall set rule group="remote desktop" new enable=Yes
 
-    - name: Keep Alive (6 hours max)
-      run: timeout /t 21600
+    - name: Create Lab User
+      run: |
+        net user cloudlab P@ssw0rd123 /add
+        net localgroup administrators cloudlab /add
+
+    - name: Download Tailscale
+      run: |
+        Invoke-WebRequest https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -OutFile tailscale.exe
+
+    - name: Install Tailscale
+      run: |
+        Start-Process .\tailscale.exe -ArgumentList "/S" -Wait
+
+    - name: Start Tailscale
+      run: |
+        & "C:\Program Files\Tailscale\tailscale.exe" up --authkey ${{ secrets.TS_AUTHKEY }} --accept-routes
+
+    - name: Show Tailscale IP
+      run: |
+        echo ===== TAILSCALE IP =====
+        & "C:\Program Files\Tailscale\tailscale.exe" ip
+
+    - name: Show RDP Port
+      run: |
+        echo ===== RDP PORT STATUS =====
+        netstat -ano | findstr 3389
+
+    - name: Show CPU + RAM
+      run: |
+        echo ===== CPU INFO =====
+        wmic cpu get name,numberofcores
+        echo ===== MEMORY INFO =====
+        wmic OS get TotalVisibleMemorySize,FreePhysicalMemory
+
+    - name: Keep Lab Alive
+      run: |
+        ping -t 127.0.0.1
