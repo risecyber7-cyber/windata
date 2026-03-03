@@ -1,0 +1,69 @@
+name: Ultimate Windows CloudLab
+
+on:
+  workflow_dispatch:
+
+jobs:
+  winlab:
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+
+    - name: Show Basic Info
+      run: |
+        echo ===== SYSTEM INFO =====
+        systeminfo
+        echo ===== IP CONFIG =====
+        ipconfig
+
+    - name: Enable RDP
+      run: |
+        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+        netsh advfirewall firewall set rule group="remote desktop" new enable=Yes
+
+    - name: Create Lab User
+      run: |
+        net user cloudlab P@ssw0rd123 /add
+        net localgroup administrators cloudlab /add
+
+    - name: Download Tailscale
+      run: |
+        Invoke-WebRequest https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -OutFile tailscale.exe
+
+    - name: Install Tailscale
+      run: |
+        Start-Process .\tailscale.exe -ArgumentList "/S" -Wait
+
+    - name: Start Tailscale
+      run: |
+        & "C:\Program Files\Tailscale\tailscale.exe" up --authkey ${{ secrets.TS_AUTHKEY }} --accept-routes
+
+    - name: Show Tailscale IP
+      run: |
+        echo ===== TAILSCALE IP =====
+        & "C:\Program Files\Tailscale\tailscale.exe" ip
+
+    - name: Show RDP Port
+      run: |
+        echo ===== RDP PORT STATUS =====
+        netstat -ano | findstr 3389
+
+    - name: Show CPU + RAM (Modern Method)
+      run: |
+        echo ===== CPU INFO =====
+        Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores
+
+        echo ===== MEMORY INFO =====
+        $os = Get-CimInstance Win32_OperatingSystem
+        "Total Memory (MB): $([math]::round($os.TotalVisibleMemorySize/1024))"
+        "Free Memory (MB): $([math]::round($os.FreePhysicalMemory/1024))"
+
+    - name: Show Disk Info
+      run: |
+        echo ===== DISK INFO =====
+        Get-PSDrive -PSProvider FileSystem
+
+    - name: Keep Lab Alive
+      run: |
+        ping -t 127.0.0.1
