@@ -49,12 +49,6 @@ jobs:
         echo ===== RDP PORT STATUS =====
         netstat -ano | findstr 3389
 
-    - name: Show CPU + RAM
-      run: |
-        echo ===== CPU INFO =====
-        wmic cpu get name,numberofcores
-        echo ===== MEMORY INFO =====
-        wmic OS get TotalVisibleMemorySize,FreePhysicalMemory
 
     - name: Keep Lab Alive
       run: |
